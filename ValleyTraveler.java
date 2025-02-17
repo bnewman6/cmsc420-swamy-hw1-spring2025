@@ -2,7 +2,7 @@
  * ValleyTraveler class represents a magical map that can identify and modify
  * valley points in the landscape of Numerica.
  * 
- * @author <Your Name>
+ * @author Brandon Newman
  */
 public class ValleyTraveler {
 
@@ -15,10 +15,12 @@ public class ValleyTraveler {
      */
     public ValleyTraveler(int[] landscape) {
         // Initialize the internal state based on the provided landscape.
+        int[] 
     }
 
     /**
-     * Checks if the entire landscape is excavated (i.e., there are no landforms left).
+     * Checks if the entire landscape is excavated (i.e., there are no landforms
+     * left).
      * 
      * @return true if the landscape is empty, false otherwise.
      */
@@ -48,7 +50,8 @@ public class ValleyTraveler {
     }
 
     /**
-     * Creates a new landform at the position where the first valley was just removed.
+     * Creates a new landform at the position where the first valley was just
+     * removed.
      * 
      * @param height The height of the new landform.
      */
@@ -57,7 +60,8 @@ public class ValleyTraveler {
     }
 
     /**
-     * Returns the current total treasure collected through successive remove operations.
+     * Returns the current total treasure collected through successive remove
+     * operations.
      * 
      * @return The total treasure collected.
      */

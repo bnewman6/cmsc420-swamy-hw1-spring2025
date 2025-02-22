@@ -148,9 +148,9 @@ public class ValleyTraveler {
             curr.next.prev = curr.prev;
         } else if (curr.next == tail) {
             if (curr.next.value < curr.prev.value) {
-                curr.next.valley = tail;
+                curr.next.valley = curr.next;
                 valley = tail;
-                curr.prev.valley = tail;
+                curr.prev.valley = curr.next.valley;
             } else if (curr.prev.prev.value > curr.prev.value) {
                 curr.prev.valley = curr.prev;
                 valley = curr.prev;
@@ -213,8 +213,8 @@ public class ValleyTraveler {
                     }
                 }
             } else {
-                curr.prev.valley = curr;
                 curr.valley = curr;
+                curr.prev.valley = curr.valley;
                 valley = curr;
             }
         }

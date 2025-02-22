@@ -4,11 +4,30 @@
  * 
  * @author Brandon Newman
  */
+class Node {
+    long value;
+    double sum;
+    long idx;
+    Node valley;
+    Node next;
+    Node prev;
+
+    public Node(int value, double sum, long idx) {
+        this.value = value;
+        this.sum = sum;
+        this.idx = idx;
+        this.valley = null;
+        this.next = null;
+        this.prev = null;
+    }
+}
+
 public class ValleyTraveler {
 
     // Instance variables to manage the landscape and collected treasures.
-    int[] numerica;
-    double totalTreasure = 0;
+    private double totalTreasure;
+    private int size;
+    private Node head, tail, valley;
 
     /**
      * Constructor to initialize the magical map with the given landscape of
@@ -18,7 +37,47 @@ public class ValleyTraveler {
      */
     public ValleyTraveler(int[] landscape) {
         // Initialize the internal state based on the provided landscape.
-        numerica = landscape.clone();
+        this.size = landscape.length;
+        this.totalTreasure = 0;
+
+        if (size == 0)
+            return;
+
+        Node prev = null;
+        double sum = 0;
+
+        for (int i = 0; i < size; i++) {
+            sum += landscape[i];
+            Node node = new Node(landscape[i], sum, i + 1);
+
+            if (prev != null) {
+                if (i == size - 1) {
+                    if (prev.value > node.value) {
+                        node.valley = node;
+                    }
+                } else if (prev.value > node.value && node.value < landscape[i + 1]) {
+                    node.valley = node;
+                }
+                prev.next = node;
+                node.prev = prev;
+            } else {
+                if (i == size - 1 || node.value < landscape[i + 1]) {
+                    node.valley = node;
+                }
+                head = node;
+            }
+            prev = node;
+        }
+        tail = prev;
+
+        Node curr = tail;
+        while (curr.prev != null) {
+            curr = curr.prev;
+            if (curr.valley == null) {
+                curr.valley = curr.next.valley;
+            }
+        }
+        valley = head.valley;
     }
 
     /**
@@ -29,7 +88,7 @@ public class ValleyTraveler {
      */
     public boolean isEmpty() {
         // Determine if the landscape is empty.
-        return numerica.length == 0;
+        return head == null;
     }
 
     /**
@@ -39,21 +98,7 @@ public class ValleyTraveler {
      */
     public double getFirst() {
         // Locate the first valley point and calculate its treasure.
-        if (isEmpty()) {
-            return -1;
-        } else if (numerica.length == 1 || numerica[0] < numerica[1]) {
-            return 0;
-        }
-
-        for (int i = 1; i < numerica.length - 1; i++) {
-            if (numerica[i] < numerica[i - 1] && numerica[i] < numerica[i + 1]) {
-                return i;
-            }
-        }
-        if (numerica[numerica.length - 1] < numerica[numerica.length - 2]) {
-            return numerica.length - 1;
-        }
-        return -1;
+        return valley.sum / valley.idx;
     }
 
     /**
@@ -63,28 +108,76 @@ public class ValleyTraveler {
      */
     public double remove() {
         // Remove the first valley point and update internal state.
-        double idx = getFirst();
-        if (idx == -1) {
-            return 0;
+        double treasure = getFirst();
+        Node curr = valley;
+        double currSum = curr.value;
+
+        if (curr == head) {
+            if (curr == tail) {
+                head = tail = valley = null;
+            } else {
+                head = curr.next;
+                head.prev = null;
+                if (head.next != null) {
+                    if (head.next.value > head.value) {
+                        head.valley = head;
+                        valley = head;
+                    } else {
+                        valley = head.valley;
+                    }
+                } else {
+                    tail = head;
+                    valley = head;
+                }
+            }
+        } else if (curr == tail) {
+            curr.prev.next = null;
+            tail = curr.prev;
+            valley = tail;
+        } else if (curr.prev == head) {
+            if (curr.prev.value < curr.next.value) {
+                head.valley = head;
+                valley = head;
+            } else if (curr.next == tail || curr.next.next.value > curr.next.value) {
+                curr.next.valley = curr.next;
+                valley = curr.next;
+            } else {
+                valley = curr.next.valley;
+            }
+            curr.prev.next = curr.next;
+            curr.next.prev = curr.prev;
+        } else if (curr.next == tail) {
+            if (curr.next.value < curr.prev.value) {
+                curr.next.valley = tail;
+                valley = tail;
+                curr.prev.valley = tail;
+            } else if (curr.prev.prev.value > curr.prev.value) {
+                curr.prev.valley = curr.prev;
+                valley = curr.prev;
+            }
+            curr.next.prev = curr.prev;
+            curr.prev.next = curr.next;
+        } else {
+            if (curr.prev.prev.value > curr.prev.value && curr.prev.value < curr.next.value) {
+                curr.prev.valley = curr.prev;
+                valley = curr.prev;
+            } else if (curr.prev.value > curr.next.value && curr.next.value < curr.next.next.value) {
+                curr.next.valley = curr.next;
+                curr.prev.valley = curr.next.valley;
+                valley = curr.next;
+            }
+            curr.next.prev = curr.prev;
+            curr.prev.next = curr.next;
         }
 
-        int[] numerica2 = new int[numerica.length - 1];
-        double treasure = 0;
-
-        for (int i = 0, k = 0; i < numerica.length; i++) {
-            if (i <= idx) {
-                treasure += numerica[i];
-            }
-
-            if (i != idx) {
-                numerica2[k++] = numerica[i];
-            }
+        while (curr.next != null) {
+            curr = curr.next;
+            curr.sum -= currSum;
+            curr.idx--;
         }
-
-        numerica = numerica2;
-
-        totalTreasure += treasure / (idx + 1);
-        return treasure / (idx + 1);
+        totalTreasure += treasure;
+        size--;
+        return treasure;
     }
 
     /**
@@ -95,20 +188,43 @@ public class ValleyTraveler {
      */
     public void insert(int height) {
         // Insert a new landform at the correct position.
-        double idx = getFirst();
-        if (idx == -1) {
-            idx = 0;
-        }
-        int[] numerica2 = new int[numerica.length + 1];
+        Node curr = new Node(height, valley.sum - valley.value + height, valley.idx);
+        curr.next = valley;
+        curr.prev = valley.prev;
+        valley.prev = curr;
+        curr.valley = curr.next.valley;
 
-        for (int i = 0, k = 0; i < numerica.length; i++) {
-            if (i == idx) {
-                numerica2[k++] = height;
+        if (valley == head) {
+            head = curr;
+            if (curr.value < valley.value) {
+                curr.valley = curr;
+                valley = curr;
             }
-            numerica2[k++] = numerica[i];
+        } else {
+            curr.prev.next = curr;
+            if (curr.value > valley.value) {
+                if (curr.prev.value < curr.value) {
+                    if (curr.prev == head) {
+                        curr.prev.valley = curr.prev;
+                        valley = head;
+                    } else if (curr.prev.prev.value > curr.prev.value) {
+                        curr.prev.valley = curr.prev;
+                        valley = curr.prev;
+                    }
+                }
+            } else {
+                curr.prev.valley = curr;
+                curr.valley = curr;
+                valley = curr;
+            }
         }
 
-        numerica = numerica2;
+        while (curr.next != null) {
+            curr = curr.next;
+            curr.sum += height;
+            curr.idx++;
+        }
+        size++;
     }
 
     /**

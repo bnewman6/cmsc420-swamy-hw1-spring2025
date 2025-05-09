@@ -4,30 +4,23 @@
  * 
  * @author Brandon Newman
  */
-class Node {
-    long value;
-    double sum;
-    long idx;
-    Node valley;
-    Node next;
-    Node prev;
-
-    public Node(int value, double sum, long idx) {
-        this.value = value;
-        this.sum = sum;
-        this.idx = idx;
-        this.valley = null;
-        this.next = null;
-        this.prev = null;
-    }
-}
 
 public class ValleyTraveler {
 
-    // Instance variables to manage the landscape and collected treasures.
+    private class Node {
+        int height;
+        int prefixSum; // Sum from head to this node (inclusive)
+        Node prev, next;
+
+        Node(int height, int prefixSum) {
+            this.height = height;
+            this.prefixSum = prefixSum;
+        }
+    }
+
+    private Node head, tail;
+    private Node firstValley; // Pointer to the first valley
     private double totalTreasure;
-    private int size;
-    private Node head, tail, valley;
 
     /**
      * Constructor to initialize the magical map with the given landscape of
@@ -37,47 +30,47 @@ public class ValleyTraveler {
      */
     public ValleyTraveler(int[] landscape) {
         // Initialize the internal state based on the provided landscape.
-        this.size = landscape.length;
-        this.totalTreasure = 0;
-
-        if (size == 0)
+        if (landscape.length == 0)
             return;
 
-        Node prev = null;
-        double sum = 0;
+        // Build doubly linked list with prefix sums
+        head = new Node(landscape[0], landscape[0]);
+        Node prev = head;
 
-        for (int i = 0; i < size; i++) {
-            sum += landscape[i];
-            Node node = new Node(landscape[i], sum, i + 1);
-
-            if (prev != null) {
-                if (i == size - 1) {
-                    if (prev.value > node.value) {
-                        node.valley = node;
-                    }
-                } else if (prev.value > node.value && node.value < landscape[i + 1]) {
-                    node.valley = node;
-                }
-                prev.next = node;
-                node.prev = prev;
-            } else {
-                if (i == size - 1 || node.value < landscape[i + 1]) {
-                    node.valley = node;
-                }
-                head = node;
-            }
-            prev = node;
+        for (int i = 1; i < landscape.length; i++) {
+            Node curr = new Node(landscape[i], prev.prefixSum + landscape[i]);
+            prev.next = curr;
+            curr.prev = prev;
+            prev = curr;
         }
         tail = prev;
 
-        Node curr = tail;
-        while (curr.prev != null) {
-            curr = curr.prev;
-            if (curr.valley == null) {
-                curr.valley = curr.next.valley;
+        // Identify first valley
+        updateFirstValley();
+    }
+
+    private void updateFirstValley() {
+        Node curr = head;
+        int idx = 0;
+        while (curr != null) {
+            boolean isValley = false;
+            if (curr.prev == null && curr.next == null)
+                isValley = true;
+            else if (curr.prev == null)
+                isValley = curr.height < curr.next.height;
+            else if (curr.next == null)
+                isValley = curr.height < curr.prev.height;
+            else
+                isValley = curr.height < curr.prev.height && curr.height < curr.next.height;
+
+            if (isValley) {
+                firstValley = curr;
+                return;
             }
+            curr = curr.next;
+            idx++;
         }
-        valley = head.valley;
+        firstValley = null;
     }
 
     /**
@@ -98,7 +91,17 @@ public class ValleyTraveler {
      */
     public double getFirst() {
         // Locate the first valley point and calculate its treasure.
-        return valley.sum / valley.idx;
+        if (firstValley == null)
+            return -1.0;
+
+        int idx = 0;
+        int sum = firstValley.prefixSum;
+        Node curr = head;
+        while (curr != firstValley) {
+            idx++;
+            curr = curr.next;
+        }
+        return (double) sum / (idx + 1);
     }
 
     /**
@@ -108,75 +111,40 @@ public class ValleyTraveler {
      */
     public double remove() {
         // Remove the first valley point and update internal state.
+        if (firstValley == null)
+            return -1.0;
+
         double treasure = getFirst();
-        Node curr = valley;
-        double currSum = curr.value;
-
-        if (curr == head) {
-            if (curr == tail) {
-                head = tail = valley = null;
-            } else {
-                head = curr.next;
-                head.prev = null;
-                if (head.next != null) {
-                    if (head.next.value > head.value) {
-                        head.valley = head;
-                        valley = head;
-                    } else {
-                        valley = head.valley;
-                    }
-                } else {
-                    tail = head;
-                    valley = head;
-                }
-            }
-        } else if (curr == tail) {
-            curr.prev.next = null;
-            tail = curr.prev;
-            valley = tail;
-        } else if (curr.prev == head) {
-            if (curr.prev.value < curr.next.value) {
-                head.valley = head;
-                valley = head;
-            } else if (curr.next == tail || curr.next.next.value > curr.next.value) {
-                curr.next.valley = curr.next;
-                valley = curr.next;
-            } else {
-                valley = curr.next.valley;
-            }
-            curr.prev.next = curr.next;
-            curr.next.prev = curr.prev;
-        } else if (curr.next == tail) {
-            if (curr.next.value < curr.prev.value) {
-                curr.next.valley = curr.next;
-                valley = tail;
-                curr.prev.valley = curr.next.valley;
-            } else if (curr.prev.prev.value > curr.prev.value) {
-                curr.prev.valley = curr.prev;
-                valley = curr.prev;
-            }
-            curr.next.prev = curr.prev;
-            curr.prev.next = curr.next;
-        } else {
-            if (curr.prev.prev.value > curr.prev.value && curr.prev.value < curr.next.value) {
-                curr.prev.valley = curr.prev;
-                valley = curr.prev;
-            } else if (curr.prev.value > curr.next.value && curr.next.value < curr.next.next.value) {
-                curr.next.valley = curr.next;
-                curr.prev.valley = curr.next.valley;
-                valley = curr.next;
-            }
-            curr.next.prev = curr.prev;
-            curr.prev.next = curr.next;
-        }
-
-        while (curr.next != null) {
-            curr = curr.next;
-            curr.sum -= currSum;
-            curr.idx--;
-        }
         totalTreasure += treasure;
-        size--;
+
+        // Remove firstValley from the list
+        Node toRemove = firstValley;
+
+        if (toRemove.prev == null && toRemove.next == null) {
+            head = tail = null;
+        } else if (toRemove.prev == null) {
+            head = toRemove.next;
+            head.prev = null;
+        } else if (toRemove.next == null) {
+            tail = toRemove.prev;
+            tail.next = null;
+        } else {
+            toRemove.prev.next = toRemove.next;
+            toRemove.next.prev = toRemove.prev;
+        }
+
+        // Recalculate prefix sums from the removed node's next
+        Node curr = (toRemove.prev == null) ? head : toRemove.next;
+        if (curr != null) {
+            Node prev = curr.prev;
+            while (curr != null) {
+                curr.prefixSum = (prev == null) ? curr.height : prev.prefixSum + curr.height;
+                prev = curr;
+                curr = curr.next;
+            }
+        }
+
+        updateFirstValley();
         return treasure;
     }
 
@@ -188,43 +156,35 @@ public class ValleyTraveler {
      */
     public void insert(int height) {
         // Insert a new landform at the correct position.
-        Node curr = new Node(height, valley.sum - valley.value + height, valley.idx);
-        curr.next = valley;
-        curr.prev = valley.prev;
-        valley.prev = curr;
-        curr.valley = curr.next.valley;
+        if (firstValley == null)
+            return; // Shouldn't happen due to problem guarantees
 
-        if (valley == head) {
-            head = curr;
-            if (curr.value < valley.value) {
-                curr.valley = curr;
-                valley = curr;
-            }
+        Node newNode = new Node(height, 0);
+
+        if (firstValley.prev == null) {
+            // Insert at head
+            newNode.next = head;
+            head.prev = newNode;
+            head = newNode;
         } else {
-            curr.prev.next = curr;
-            if (curr.value > valley.value) {
-                if (curr.prev.value < curr.value) {
-                    if (curr.prev == head) {
-                        curr.prev.valley = curr.prev;
-                        valley = head;
-                    } else if (curr.prev.prev.value > curr.prev.value) {
-                        curr.prev.valley = curr.prev;
-                        valley = curr.prev;
-                    }
-                }
-            } else {
-                curr.valley = curr;
-                curr.prev.valley = curr.valley;
-                valley = curr;
-            }
+            // Insert before firstValley
+            Node prev = firstValley.prev;
+            prev.next = newNode;
+            newNode.prev = prev;
+            newNode.next = firstValley;
+            firstValley.prev = newNode;
         }
 
-        while (curr.next != null) {
+        // Recompute prefix sums from newNode onward
+        Node curr = newNode;
+        Node prev = newNode.prev;
+        while (curr != null) {
+            curr.prefixSum = (prev == null) ? curr.height : prev.prefixSum + curr.height;
+            prev = curr;
             curr = curr.next;
-            curr.sum += height;
-            curr.idx++;
         }
-        size++;
+
+        updateFirstValley();
     }
 
     /**
